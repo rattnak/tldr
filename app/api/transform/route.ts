@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode(data));
         }
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : "Unknown error";
+        const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err);
+        console.error("Transform error:", errMsg);
         const data = `data: ${JSON.stringify({ type: "error", chunk: errMsg })}\n\n`;
         controller.enqueue(encoder.encode(data));
       } finally {
