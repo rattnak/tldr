@@ -19,7 +19,7 @@ export default function SixtySecondBrief({ content, active }: SixtySecondBriefPr
         {active && <span className="ml-auto text-xs text-emerald-500 animate-pulse">streaming…</span>}
         {!active && content && (
           <>
-            <span className="ml-auto text-xs font-mono text-emerald-700 border border-emerald-800 rounded px-1.5 py-0.5">
+            <span className="text-xs font-mono text-emerald-700 border border-emerald-800 rounded px-1.5 py-0.5">
               {wordCount}w
             </span>
             <CopyButton text={content} />
