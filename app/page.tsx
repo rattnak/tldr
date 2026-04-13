@@ -139,11 +139,11 @@ export default function Home() {
             }
 
             setActiveSection(type as ActiveSection);
-            setOutput((prev) => {
-              const next = { ...prev, [type]: prev[type as keyof OutputState] + chunk };
-              finalOutput[type as keyof OutputState] = next[type as keyof OutputState];
-              return next;
-            });
+            finalOutput[type as keyof OutputState] = (finalOutput[type as keyof OutputState] ?? "") + chunk;
+            setOutput((prev) => ({
+              ...prev,
+              [type]: prev[type as keyof OutputState] + chunk,
+            }));
           } catch { /* ignore malformed SSE */ }
         }
       }
