@@ -1,7 +1,16 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function anthropicFetch(body: object) {
+  return fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
 
 // ─── Zod schema — single source of truth for what Claude must return ───────────
 export const TransformSchema = z.object({
@@ -52,11 +61,11 @@ You MUST respond with valid JSON that exactly matches this structure:
   "sixty_second_brief": "string"
 }`;
 
-// ─── Main transform — streams JSON then parses + validates with Zod ────────────
+// ─── Main transform — raw fetch to avoid SDK connection issues on Vercel ───────
 export async function* streamTransform(
   article: string
 ): AsyncGenerator<StreamChunk> {
-  const stream = client.messages.stream({
+  const res = await anthropicFetch({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 4096,
     system: SYSTEM_PROMPT,
@@ -68,27 +77,16 @@ export async function* streamTransform(
     ],
   });
 
-  // Stream raw text to client so the UI shows activity immediately
-  let fullText = "";
-  const sectionsSent = new Set<ChunkType>();
-
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
-    ) {
-      fullText += event.delta.text;
-
-      // Speculatively stream each section as soon as its JSON value closes
-      // This gives real-time feel while we accumulate the full response
-      tryStreamSection(fullText, "reasoning", sectionsSent, (chunk) => {
-        // Will yield after loop — collect for now
-        void chunk;
-      });
-    }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    yield { type: "error", chunk: (err as { error?: { message?: string } }).error?.message ?? "API error" };
+    return;
   }
 
-  // Full response received — parse and validate with Zod
+  const data = await res.json() as { content: Array<{ type: string; text: string }> };
+  const fullText = data.content.find((b) => b.type === "text")?.text ?? "";
+
+  // Parse and validate with Zod
   let parsed: TransformOutput;
   try {
     const json = extractJSON(fullText);
@@ -99,7 +97,6 @@ export async function* streamTransform(
     return;
   }
 
-  // Yield each section as a complete, validated chunk
   const reasoningText = [
     `Core claim: ${parsed.reasoning.core_claim}`,
     `\nConnective tissue: ${parsed.reasoning.connective_tissue}`,
@@ -107,17 +104,8 @@ export async function* streamTransform(
     `\nSequence: ${parsed.reasoning.sequence}`,
   ].join("");
   yield { type: "reasoning", chunk: reasoningText };
-
-  yield {
-    type: "micro_lesson",
-    chunk: parsed.micro_lesson.map((s, i) => `${i + 1}. ${s}`).join("\n"),
-  };
-
-  yield {
-    type: "socratic_questions",
-    chunk: parsed.socratic_questions.map((q, i) => `${i + 1}. ${q}`).join("\n"),
-  };
-
+  yield { type: "micro_lesson", chunk: parsed.micro_lesson.map((s, i) => `${i + 1}. ${s}`).join("\n") };
+  yield { type: "socratic_questions", chunk: parsed.socratic_questions.map((q, i) => `${i + 1}. ${q}`).join("\n") };
   yield { type: "sixty_second_brief", chunk: parsed.sixty_second_brief };
   yield { type: "done", chunk: "" };
 }
@@ -135,27 +123,25 @@ If the user seems to misunderstand something, gently correct them with evidence 
 ARTICLE CONTEXT:
 ${article}`;
 
-  const messages: Anthropic.MessageParam[] = [
-    ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: userMessage },
-  ];
-
-  const stream = client.messages.stream({
+  const res = await anthropicFetch({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
     system: chatSystem,
-    messages,
+    messages: [
+      ...history.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: userMessage },
+    ],
   });
 
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
-    ) {
-      yield { type: "reasoning", chunk: event.delta.text };
-    }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    yield { type: "error", chunk: (err as { error?: { message?: string } }).error?.message ?? "API error" };
+    return;
   }
 
+  const data = await res.json() as { content: Array<{ type: string; text: string }> };
+  const text = data.content.find((b) => b.type === "text")?.text ?? "";
+  yield { type: "reasoning", chunk: text };
   yield { type: "done", chunk: "" };
 }
 
@@ -171,7 +157,7 @@ export async function evaluateAnswer(
   question: string,
   userAnswer: string
 ): Promise<ComprehensionResult> {
-  const response = await client.messages.create({
+  const res = await anthropicFetch({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 512,
     system: `You evaluate comprehension answers about articles. Respond only with valid JSON matching:
@@ -184,8 +170,8 @@ reteach should be a 2-3 sentence targeted re-explanation only if score is partia
       },
     ],
   });
-
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const data = await res.json() as { content: Array<{ type: string; text: string }> };
+  const text = data.content.find((b) => b.type === "text")?.text ?? "";
   try {
     const json = extractJSON(text);
     return json as ComprehensionResult;
@@ -208,10 +194,3 @@ function extractJSON(text: string): unknown {
   return JSON.parse(stripped.slice(start, end + 1));
 }
 
-// Unused but kept for future partial-streaming upgrade
-function tryStreamSection(
-  _text: string,
-  _section: ChunkType,
-  _sent: Set<ChunkType>,
-  _cb: (chunk: string) => void
-): void {}
