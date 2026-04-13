@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ArticleInputProps {
   onSubmit: (article: string) => void;
   isLoading: boolean;
+  value?: string;
 }
 
-export default function ArticleInput({ onSubmit, isLoading }: ArticleInputProps) {
+export default function ArticleInput({ onSubmit, isLoading, value }: ArticleInputProps) {
   const [url, setUrl] = useState("");
   const [urlLoading, setUrlLoading] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [truncated, setTruncated] = useState(false);
+
+  useEffect(() => {
+    if (value !== undefined) setText(value);
+  }, [value]);
 
   const handleFetchUrl = async () => {
     if (!url.trim()) return;

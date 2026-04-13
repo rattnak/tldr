@@ -290,7 +290,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <ArticleInput onSubmit={handleSubmit} isLoading={isLoading} />
+              <ArticleInput onSubmit={handleSubmit} isLoading={isLoading} value={article} />
 
               {error && (
                 <div className="rounded-xl border border-red-500/30 bg-red-950/30 p-4 text-sm text-red-400">
