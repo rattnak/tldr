@@ -37,7 +37,7 @@ const EMPTY: OutputState = {
   sixty_second_brief: "",
 };
 
-const HISTORY_KEY = "tldr_history";
+const HISTORY_KEY = "tldl_history";
 
 function loadHistory(): HistoryEntry[] {
   if (typeof window === "undefined") return [];
@@ -174,7 +174,7 @@ export default function Home() {
 
   const exportAll = () => {
     const md = [
-      `# TL;DR Export`,
+      `# TLDL Export`,
       ``,
       `## Article`,
       article,
@@ -196,7 +196,7 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "tldr-export.md";
+    a.download = "tldl-export.md";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -215,7 +215,7 @@ export default function Home() {
           >
             ☰
           </button>
-          <h1 className="text-xl font-black tracking-tight text-white">TL;DR</h1>
+          <h1 className="text-xl font-black tracking-tight text-white">TL;DL</h1>
           <span className="text-sm text-slate-400 hidden sm:block">
             Too Long, Didn&apos;t Learn — AI that fixes your attention span
           </span>
