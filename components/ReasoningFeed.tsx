@@ -1,5 +1,7 @@
 "use client";
 
+import CopyButton from "./CopyButton";
+
 interface ReasoningFeedProps {
   content: string;
   active: boolean;
@@ -11,9 +13,7 @@ export default function ReasoningFeed({ content, active }: ReasoningFeedProps) {
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5">
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
-          Agent Reasoning
-        </span>
+        <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Agent Reasoning</span>
         {active && (
           <span className="flex gap-1">
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:0ms]" />
@@ -21,6 +21,7 @@ export default function ReasoningFeed({ content, active }: ReasoningFeedProps) {
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:300ms]" />
           </span>
         )}
+        {!active && content && <CopyButton text={content} />}
       </div>
       <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-400">
         {content}
