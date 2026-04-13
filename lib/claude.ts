@@ -57,7 +57,7 @@ export async function* streamTransform(
   article: string
 ): AsyncGenerator<StreamChunk> {
   const stream = client.messages.stream({
-    model: "claude-haiku-4-5",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 4096,
     system: SYSTEM_PROMPT,
     messages: [
@@ -141,7 +141,7 @@ ${article}`;
   ];
 
   const stream = client.messages.stream({
-    model: "claude-haiku-4-5",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
     system: chatSystem,
     messages,
@@ -172,7 +172,7 @@ export async function evaluateAnswer(
   userAnswer: string
 ): Promise<ComprehensionResult> {
   const response = await client.messages.create({
-    model: "claude-haiku-4-5",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 512,
     system: `You evaluate comprehension answers about articles. Respond only with valid JSON matching:
 {"score": "correct"|"partial"|"incorrect", "feedback": "string", "reteach": "string or null"}
